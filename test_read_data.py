@@ -16,3 +16,6 @@ print(df.dtypes)
 # Print the summary statistics of the dataframe
 # (count values, unique values, top values, and frequency of top values)
 print(df.describe())
+
+# save the 10 first lines of the dataframe in a new csv file
+#df.head(10).to_csv('sample.csv', index=False)
