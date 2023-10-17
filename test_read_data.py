@@ -1,3 +1,4 @@
+
 # Import the necessary libraries
 import pandas as pd
 
@@ -19,3 +20,6 @@ print(df.describe())
 
 # save the 10 first lines of the dataframe in a new csv file
 #df.head(10).to_csv('sample.csv', index=False)
+print(df["pixel_color"].unique())
+print(df.iloc[0].timestamp)
+print(type(df.iloc[0].timestamp))
