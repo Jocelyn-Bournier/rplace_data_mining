@@ -1,9 +1,10 @@
 
 # Import the necessary libraries
 import pandas as pd
+from data import clean_data
 
 # Read the CSV file into a pandas dataframe
-df = pd.read_csv('2023_place_canvas_history-000000000000.csv')
+df = pd.read_csv('raw/2023_place_canvas_history-000000000000.csv')
 
 # Print the first row of the dataframe
 print(df.head(1))
@@ -23,3 +24,5 @@ print(df.describe())
 print(df["pixel_color"].unique())
 print(df.iloc[0].timestamp)
 print(type(df.iloc[0].timestamp))
+
+clean_data("2023_place_canvas_history-000000000000.csv")

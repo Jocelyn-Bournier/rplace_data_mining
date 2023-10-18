@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from data import open_data
 colors = {
     '#FFFFFF' : 0,
     '#FF4500' : 1,
@@ -11,12 +12,6 @@ colors = {
     '#FFA800' : 7,
 }
 
-def open_data(file):
-    df = pd.read_csv(file)
-    # attention ici j'ai du aller modifier le csv parceque certain on pas de miliseconde 
-    # ajouté je savais pas comment indiqué le double format
-    df["timestamp"] = pd.to_datetime(df.timestamp, format = '%Y-%m-%d %H:%M:%S.%f %Z')
-    return df
 
 def string_to_color(s : str):
     return colors[s]
@@ -29,11 +24,34 @@ def string_to_coordinate(s : str):
     l = s.split(",",2)
     return int(l[0]), int(l[1])
 
-def summary(startingTimeStamp, EndingTimeStamp, startingData : np.ndarray, file, summary_function):
 
-    df = open_data(file)
+def binary_search(arr, target):
+    """
+        get the first element in arr that is superior or equal to target
+    """
+    left, right = 0, len(arr) - 1
+
+    while left < right:
+        mid = (left + right) // 2
+        print(left,mid,right)
+
+        if arr[mid] == target:
+            return mid  # Element found, return its index
+        elif arr[mid] < target:
+            left = mid + 1  # Adjust the search range to the right half
+        else:
+            right = mid  # Adjust the search range to the left half
+
+
+    return left  # Element not found
+
+print(binary_search([1,2,3], 1.5))
+
+def summary(startingTimeStamp, EndingTimeStamp, startingData : np.ndarray, df, summary_function):
     # à faire : garder que les indices entre les timeStamp fort probablement binary search et réduction aux indices avec un iloc
-
+    start_index = binary_search(df.timestamp, startingTimeStamp)
+    end_index = binary_search(df.timestamp, EndingTimeStamp)
+    df = df.iloc[start_index:end_index]
 
     # itération sur les lignes du dataframe
     for row in df.itertuples() :
@@ -44,7 +62,7 @@ def summary(startingTimeStamp, EndingTimeStamp, startingData : np.ndarray, file,
             # traiter les cas de modération ici ou en modifiant la partie au dessus 
             pass
     
-start = np.ndarray((500,500), dtype=np.int32)
-summary(pd.Timestamp("2023-07-20 13:00:26.088 UTC"), pd.Timestamp("2023-07-20 16:00:26.088 UTC"),start, "2023_place_canvas_history-000000000000.csv", lambda _,y : y)
-print(start)
-print(check_data_chronologically_sorted("2023_place_canvas_history-000000000000.csv"))
+# start = np.ndarray((500,500), dtype=np.int32)
+# summary(pd.Timestamp("2023-07-20 13:00:26.088 UTC"), pd.Timestamp("2023-07-20 16:00:26.088 UTC"),start, "raw/2023_place_canvas_history-000000000000.csv", lambda _,y : y)
+# print(start)
+# print(check_data_chronologically_sorted("raw/2023_place_canvas_history-000000000000.csv"))
