@@ -1,28 +1,22 @@
 import pandas as pd
 import numpy as np
 from data import open_data
-colors = {
-    '#FFFFFF' : 0,
-    '#FF4500' : 1,
-    '#B44AC0' : 2,
-    '#3690EA' : 3,
-    '#00A368' : 4,
-    '#000000' : 5, 
-    '#FFD635' : 6,
-    '#FFA800' : 7,
-}
-
-
-def string_to_color(s : str):
-    return colors[s]
 
 def check_data_chronologically_sorted(file):
     df = open_data(file)
     return df['timestamp'].is_monotonic_increasing
 
-def string_to_coordinate(s : str):
-    l = s.split(",",2)
-    return int(l[0]), int(l[1])
+def string_to_coordinates(s : str):
+    l = s.split(",")
+    match len(l) :
+        case 2:
+            return [(int(l[0]), int(l[1]))]
+        case 3:
+            #renvoyer les coords contenu dans le circle
+            pass
+        case 4:
+            #renvoyer les coords contenu dans le rect
+            pass
 
 
 def binary_search(arr, target):
@@ -48,21 +42,18 @@ def binary_search(arr, target):
 print(binary_search([1,2,3], 1.5))
 
 def summary(startingTimeStamp, EndingTimeStamp, startingData : np.ndarray, df, summary_function):
-    # à faire : garder que les indices entre les timeStamp fort probablement binary search et réduction aux indices avec un iloc
     start_index = binary_search(df.timestamp, startingTimeStamp)
     end_index = binary_search(df.timestamp, EndingTimeStamp)
     df = df.iloc[start_index:end_index]
 
-    # itération sur les lignes du dataframe
     for row in df.itertuples() :
-        try :
-            x,y = string_to_coordinate(row.coordinate)
-            startingData[x,y] = summary_function(startingData[x,y],string_to_color(row.pixel_color))
-        except :
-            # traiter les cas de modération ici ou en modifiant la partie au dessus 
-            pass
+            l = string_to_coordinates(row.coordinate)
+            is_mod = len(l) > 1
+            for coord in l :
+                x,y = coord
+                startingData[x,y] = summary_function(startingData[x,y],row.pixel_color)
     
-# start = np.ndarray((500,500), dtype=np.int32)
-# summary(pd.Timestamp("2023-07-20 13:00:26.088 UTC"), pd.Timestamp("2023-07-20 16:00:26.088 UTC"),start, "raw/2023_place_canvas_history-000000000000.csv", lambda _,y : y)
+start = np.ndarray((500,500), dtype=np.int32)
+summary(pd.Timestamp("2023-07-20 13:00:26.088 UTC"), pd.Timestamp("2023-07-20 16:00:26.088 UTC"),start, "raw/2023_place_canvas_history-000000000000.csv", lambda _,y : y)
 # print(start)
 # print(check_data_chronologically_sorted("raw/2023_place_canvas_history-000000000000.csv"))
