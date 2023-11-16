@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import copy
 from data import open_data, get_startStamps
 from imageio import mimsave
+from IPython.display import display
+from inspect import cleandoc
+
 
 colors = {
     '#FFFFFF' : [255,255,255],
@@ -15,6 +18,12 @@ colors = {
     '#FFD635' : [255,214,53],
     '#FFA800' : [255,168,0],
 }
+
+class printer(str):
+	def __repr__(self):
+		return cleandoc(self)
+
+
 
 def string_to_color(s : str):
     return colors[s]
@@ -99,11 +108,13 @@ def summary(startingTimeStamp, EndingTimeStamp, startingData, df, summary_functi
         is_mod = len(l) > 1
         for coord in l :
             x,y = coord
-            rezData[x][y] = summary_function(rezData[x][y],row.pixel_color, is_mod)
+            rezData[x][y] = summary_function(rezData[x][y],row.pixel_color, row.user, is_mod)
     return rezData
 
 def visualise_at_interval(summary_function, transforms, interval, startingState, rezfilename, startingTimeStamp = None, EndingTimeStamp=None, duration = None):
 
+    i = 0
+    dh = display(printer("\r"), display_id=True)
     opened_data = {}
     files_and_timestamp = get_startStamps()
 
@@ -126,6 +137,7 @@ def visualise_at_interval(summary_function, transforms, interval, startingState,
     currentState = copy.deepcopy(startingState)
     rez= [startingState]
     start_idx = idx
+
     while currentTimeStamp < EndingTimeStamp :
         # make the summary
         currentState = summary(currentTimeStamp, nextTimeStamp, currentState, df, summary_function)
@@ -150,11 +162,17 @@ def visualise_at_interval(summary_function, transforms, interval, startingState,
             # save the current state 
             rez.append(currentState)
 
+            i+= 1
             if duration : 
                 currentState = copy.deepcopy(startingState)
-                print(f"just made summary from {currentTimeStamp} to {nextTimeStamp}")
+                dh.update(printer(
+                    f"""
+                        just made summary from {currentTimeStamp} to {nextTimeStamp}
+                        epochs : i
+                    """
+                ))
             else :
-                print("just made summary until ", nextTimeStamp)
+                dh.update(printer(f"just made summary until {nextTimeStamp}"))
             
             # go to the next interval
             currentTimeStamp += interval
@@ -176,10 +194,10 @@ def visualise_at_interval(summary_function, transforms, interval, startingState,
 
 
                 
-    for transform in transforms :
+    for name, transform in transforms.items() :
         # make visualisation
         transformed_rez = transform(rez)
         # save it in a gif 
-        mimsave(f"visualisation/{rezfilename}.gif", transformed_rez, duration= 3, loop= 0)
-        print(f"results saved on {rezfilename}.gif")
+        mimsave(f"visualisation/{rezfilename(name)}.gif", transformed_rez, duration= 3, loop= 0)
+        print(f"results saved on {rezfilename(name)}.gif")
 
