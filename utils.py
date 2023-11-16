@@ -102,7 +102,7 @@ def summary(startingTimeStamp, EndingTimeStamp, startingData, df, summary_functi
             rezData[x][y] = summary_function(rezData[x][y],row.pixel_color, is_mod)
     return rezData
 
-def visualise_at_interval(summary_function, transform, interval, startingState, rezfilename, startingTimeStamp = None, EndingTimeStamp=None, duration = None):
+def visualise_at_interval(summary_function, transforms, interval, startingState, rezfilename, startingTimeStamp = None, EndingTimeStamp=None, duration = None):
 
     opened_data = {}
     files_and_timestamp = get_startStamps()
@@ -176,10 +176,10 @@ def visualise_at_interval(summary_function, transform, interval, startingState, 
 
 
                 
-    # make visualisation
-    transformed_rez = transform(rez)
-    
-    # save it in a gif 
-    mimsave(f"visualisation/{rezfilename}.gif", transformed_rez, duration= 3, loop= 0)
-    print(f"results saved on {rezfilename}.gif")
+    for transform in transforms :
+        # make visualisation
+        transformed_rez = transform(rez)
+        # save it in a gif 
+        mimsave(f"visualisation/{rezfilename}.gif", transformed_rez, duration= 3, loop= 0)
+        print(f"results saved on {rezfilename}.gif")
 
