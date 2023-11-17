@@ -2,11 +2,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
-from data import open_data, get_startStamps
 from imageio import mimsave
 from IPython.display import display
 from inspect import cleandoc
 
+from data import DataIteratorDownload
+
+data = DataIteratorDownload("ricobruland/reddit-2023-rplace-pixel-data")
 
 colors = {
     '#FFFFFF' : [255,255,255],
@@ -116,7 +118,7 @@ def visualise_at_interval(summary_function, transforms, interval, startingState,
     i = 0
     dh = display(printer("\r"), display_id=True)
     opened_data = {}
-    files_and_timestamp = get_startStamps()
+    files_and_timestamp = data.startStamps
 
     if startingTimeStamp and startingTimeStamp > files_and_timestamp[0][0]:
         EndingTimeStamps = [x[1] for x in files_and_timestamp]
@@ -129,10 +131,10 @@ def visualise_at_interval(summary_function, transforms, interval, startingState,
         EndingTimeStamp = files_and_timestamp[-1][1]
     nextTimeStamp = currentTimeStamp + (duration if duration else interval)
 
-    _, nextFileTimeStamp, filename = files_and_timestamp[idx]
-    df = open_data(filename)
+    _, nextFileTimeStamp = files_and_timestamp[idx]
+    df = data[idx]
     if duration :
-        opened_data[filename] = df
+        opened_data[idx] = df
 
     currentState = copy.deepcopy(startingState)
     rez= [startingState]
@@ -143,13 +145,13 @@ def visualise_at_interval(summary_function, transforms, interval, startingState,
         currentState = summary(currentTimeStamp, nextTimeStamp, currentState, df, summary_function)
         if nextTimeStamp > nextFileTimeStamp and idx + 1 < len(files_and_timestamp) : 
             idx+=1
-            _, nextFileTimeStamp, filename = files_and_timestamp[idx]
-            if filename in opened_data :
-                df = opened_data[filename]
+            _, nextFileTimeStamp = files_and_timestamp[idx]
+            if idx in opened_data :
+                df = opened_data[idx]
             else :
-                df = open_data(filename)
+                df = data[idx]
                 if duration :
-                    opened_data[filename] = df
+                    opened_data[idx] = df
         else : 
             if nextTimeStamp > nextFileTimeStamp and duration:
                 try :
@@ -173,31 +175,40 @@ def visualise_at_interval(summary_function, transforms, interval, startingState,
                 ))
             else :
                 dh.update(printer(f"just made summary until {nextTimeStamp}"))
-            
+
+
+
             # go to the next interval
             currentTimeStamp += interval
             nextTimeStamp +=interval
             if duration:
-                _, nextFileTimeStamp, filename = files_and_timestamp[start_idx]
-                while nextFileTimeStamp < currentTimeStamp and idx + 1 < len(files_and_timestamp) :
+                _, nextFileTimeStamp = files_and_timestamp[start_idx]
+                while nextFileTimeStamp < currentTimeStamp and idx + 1 < len(data) :
                     start_idx += 1
-                    del opened_data[filename]
-                    _, nextFileTimeStamp, filename = files_and_timestamp[start_idx]
+                    del opened_data[start_idx]
+                    _, nextFileTimeStamp = files_and_timestamp[start_idx]
                 
                 idx = start_idx
-                if filename in opened_data :
-                    df = opened_data[filename]
+                if idx in opened_data :
+                    df = opened_data[idx]
                 else :
-                    df = open_data(filename)
-                    opened_data[filename] = df
+                    df = data[idx]
+                    opened_data[idx] = df
                 
 
 
-                
-    for name, transform in transforms.items() :
+    try :
+        for name, transform in transforms.items() :
+            # make visualisation
+            transformed_rez = transform(rez)
+            # save it in a gif 
+            mimsave(f"visualisation/{rezfilename(name)}.gif", transformed_rez, duration= 3, loop= 0)
+            print(f"results saved on {rezfilename(name)}.gif")
+    except Exception as e:
+
         # make visualisation
-        transformed_rez = transform(rez)
+        transformed_rez = transforms(rez)
         # save it in a gif 
-        mimsave(f"visualisation/{rezfilename(name)}.gif", transformed_rez, duration= 3, loop= 0)
-        print(f"results saved on {rezfilename(name)}.gif")
+        mimsave(f"visualisation/{rezfilename}.gif", transformed_rez, duration= 3, loop= 0)
+        print(f"results saved on {rezfilename}.gif")
 

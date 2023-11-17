@@ -15,9 +15,31 @@ from kaggle.api.kaggle_api_extended import KaggleApi
 # for file_name in files_to_download:
 #     api.dataset_download_file(dataset_slug, file_name, path=download_path, unzip=True)
 
+def get_on_disk_file_name(kaggle_file_info):
+    return str(kaggle_file_info).removesuffix(".gzip")
 
-def DataIteratorDownload():
+class StartStamps():
+    def  __init__(self, dataIterator) -> None:
+        self.data = dataIterator
+        self._startStamps = dataIterator.init_startStamps()
+    
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, index : int):
+        index = index if index >= 0 else len(self) + index
+        self.data.make_usable(index)
+        return self._startStamps[index]
+        
+    def __setitem__(self, index, value):
+        self._startStamps[index] = value
 
+    def __delitem__(self, key):
+        raise TypeError("Cannot delete items in DataIteratorDownload")
+    
+
+
+class DataIteratorDownload():
     def __init__(self, dataset, raw_data_folder = "raw/",cleaned_data_folder = "cleaned/", startEndStampsFile= "startEndStamps.txt"):
         # Instantiate the Kaggle API
         self.api = KaggleApi()
@@ -27,22 +49,39 @@ def DataIteratorDownload():
         # Authenticate with your Kaggle API credentials
         self.api.authenticate()
         self.dataset = dataset
-        self.files = self.api.dataset_view(self.dataset)["files"]
+        self.files = sorted([get_on_disk_file_name(file) for file in self.api.dataset_list_files(self.dataset).files])[:2]
+        self.startStamps = StartStamps(self)
+
+
 
     def __iter__(self):
         return ListLikeIterator(self)
+
+    def make_usable(self, index : int):
+        if index >= len(self.files):
+            raise IndexError("Index out of range.")
+        file = self.files[index]
+
+        if not Path(self.raw_data_folder + file).exists():
+            self.api.dataset_download_file(self.dataset, file, path=self.raw_data_folder)
+        
+        if not Path(self.cleaned_data_folder + file).exists():
+            self.clean_data(index)
     
     def __getitem__(self, index : int):
+        index = index if index >= 0 else len(self) + index
+        self.make_usable(index)
+        return self.open_data(index)
+        
+    def open_data(self, index: int):
         file = self.files[index]
-        if not Path(self.raw_data_folder + file).exists:
-            self.api.dataset_download_file(self.dataset, file, path=self.raw_data_folder, unzip=True)
-        
-        if not Path(self.cleaned_data_folder + file).exists:
-            clean_data(file)
-        
-
-        
-
+        print("start loading file:", file)
+        df = pd.read_csv(os.path.join(self.cleaned_data_folder,file))
+        print("start formating data")
+        # pour faire ca besoin de la 
+        df.timestamp = pd.to_datetime(df.timestamp)
+        print("loaded file :", file)
+        return df
 
     def __setitem__(self, index, value):
         raise TypeError("Cannot set items in DataIteratorDownload")
@@ -56,28 +95,20 @@ def DataIteratorDownload():
     def check_data_chronologically_sorted(self,file):
         df = self.open_data(file)
         return df.timestamp.is_monotonic_increasing
-    
-    def open_data(self,file):
-        print("start loading file:", file)
-        df = pd.read_csv(os.path.join("cleaned",file))
-        print("start formating data")
-        # pour faire ca besoin de la 
-        df.timestamp = pd.to_datetime(df.timestamp)
-        print("loaded file :", file)
-        return df
 
-    def clean_data(self,file : str):
+    def clean_data(self,idx : int):
+        file = self.files[idx]
         print(f"cleaning file {file}")
-        file_path = os.path.split(file)
-        if file_path[0] != "raw" :
-            raise ValueError(" file to be cleaned are only in the raw folder")
-        df = pd.read_csv(file)
+        if not Path(self.raw_data_folder + file):
+            raise ValueError(f"The file {file} is not present in the raw folder")
+        df = pd.read_csv(self.raw_data_folder + file)
         df.timestamp.replace(":(..) UTC", r":\1.000 UTC", regex=True, inplace=True)
-        df.to_csv("cleaned/" + file_path[1])
+        df.to_csv("cleaned/" + file)
+        start,end = df.timestamp.iloc[0],df.timestamp.iloc[-1]
+        self.startStamps[idx] = (pd.Timestamp(start),pd.Timestamp(end))
         #save startStamps in a txt file
         with open(self.startEndStampsFile, "a") as f:
-            start,end = df.timestamp.iloc[0],df.timestamp.iloc[-1]
-            f.write(f"{file};{start};{end}\n")
+            f.write(f"{idx};{start};{end}\n")
     
     def check_all_files_downloaded(self):
         folder_path = 'raw'
@@ -97,15 +128,15 @@ def DataIteratorDownload():
         
         # Iterate over all .txt files in the folder
         for filename in glob.glob(os.path.join(folder_path, file_extension)):
-            clean_data(filename)
+            self.clean_data(filename)
     
-    def get_startStamps(self,reverse = False):
-        stamps = []
-        with open("startEndStamps.txt", "r") as f:
+    def init_startStamps(self,reverse = False):
+        stamps = {}
+        with open(self.startEndStampsFile, "r") as f:
             for line in f:
-                key, start, end = line.split(";")
+                index, start, end = line.split(";")
                 end = end.removesuffix("\n")
-                stamps.append((pd.Timestamp(start), pd.Timestamp(end) , key))
+                stamps[int(index)] = (pd.Timestamp(start), pd.Timestamp(end))
         return stamps
 
 
