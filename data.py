@@ -2,6 +2,8 @@ import pandas as pd
 import glob
 import os
 from pathlib import Path
+import gzip
+import zipfile
 
 from kaggle.api.kaggle_api_extended import KaggleApi
 
@@ -15,8 +17,14 @@ from kaggle.api.kaggle_api_extended import KaggleApi
 # for file_name in files_to_download:
 #     api.dataset_download_file(dataset_slug, file_name, path=download_path, unzip=True)
 
+def unzip_file(zip_file_path: str):
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        zip_ref.extractall(os.path.dirname(zip_file_path))
+    os.remove(zip_file_path)
+    
+
 def get_on_disk_file_name(kaggle_file_info):
-    return str(kaggle_file_info).removesuffix(".gzip")
+    return str(kaggle_file_info)
 
 class StartStamps():
     def  __init__(self, dataIterator) -> None:
@@ -49,7 +57,7 @@ class DataIteratorDownload():
         # Authenticate with your Kaggle API credentials
         self.api.authenticate()
         self.dataset = dataset
-        self.files = sorted([get_on_disk_file_name(file) for file in self.api.dataset_list_files(self.dataset).files])[:2]
+        self.files = sorted([get_on_disk_file_name(file) for file in self.api.dataset_list_files(self.dataset).files])[:3]
         self.startStamps = StartStamps(self)
 
 
@@ -64,7 +72,8 @@ class DataIteratorDownload():
 
         if not Path(self.raw_data_folder + file).exists():
             self.api.dataset_download_file(self.dataset, file, path=self.raw_data_folder)
-        
+            unzip_file(self.raw_data_folder + file + ".zip")
+
         if not Path(self.cleaned_data_folder + file).exists():
             self.clean_data(index)
     
@@ -76,7 +85,7 @@ class DataIteratorDownload():
     def open_data(self, index: int):
         file = self.files[index]
         print("start loading file:", file)
-        df = pd.read_csv(os.path.join(self.cleaned_data_folder,file))
+        df = pd.read_csv(gzip.open(os.path.join(self.cleaned_data_folder,file)))
         print("start formating data")
         # pour faire ca besoin de la 
         df.timestamp = pd.to_datetime(df.timestamp)
@@ -101,9 +110,9 @@ class DataIteratorDownload():
         print(f"cleaning file {file}")
         if not Path(self.raw_data_folder + file):
             raise ValueError(f"The file {file} is not present in the raw folder")
-        df = pd.read_csv(self.raw_data_folder + file)
+        df = pd.read_csv(gzip.open(self.raw_data_folder + file))
         df.timestamp.replace(":(..) UTC", r":\1.000 UTC", regex=True, inplace=True)
-        df.to_csv("cleaned/" + file)
+        df.to_csv(self.cleaned_data_folder + file, index=False, compression='gzip')
         start,end = df.timestamp.iloc[0],df.timestamp.iloc[-1]
         self.startStamps[idx] = (pd.Timestamp(start),pd.Timestamp(end))
         #save startStamps in a txt file

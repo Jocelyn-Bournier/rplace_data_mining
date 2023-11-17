@@ -7,7 +7,6 @@ from IPython.display import display
 from inspect import cleandoc
 
 from data import DataIteratorDownload
-
 data = DataIteratorDownload("ricobruland/reddit-2023-rplace-pixel-data")
 
 colors = {
@@ -205,7 +204,7 @@ def visualise_at_interval(summary_function, transforms, interval, startingState,
             mimsave(f"visualisation/{rezfilename(name)}.gif", transformed_rez, duration= 3, loop= 0)
             print(f"results saved on {rezfilename(name)}.gif")
     except Exception as e:
-
+        print(type(e))
         # make visualisation
         transformed_rez = transforms(rez)
         # save it in a gif 
