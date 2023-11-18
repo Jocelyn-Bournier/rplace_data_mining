@@ -1,0 +1,10 @@
+
+
+A BibTeX entry for LaTeX users is:
+
+@misc{python_louvain,
+   title = {python-louvain 0.16: Louvain algorithm for community detection},
+   author = {Thomas Aynaud},
+   year = {2020},
+   howpublished = {\href{https://github.com/taynaud/python-louvain}{\texttt{https://github.com/taynaud/python-louvain}}},
+ }
