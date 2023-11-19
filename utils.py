@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 from imageio import mimsave
-
+from tqdm import tqdm
 from data import DataIteratorDownload, Logger
 data = None
 
@@ -111,8 +111,8 @@ def summary(startingTimeStamp, EndingTimeStamp, startingData, df, summary_functi
     start_index = binary_search(df.timestamp, startingTimeStamp)
     end_index = binary_search(df.timestamp, EndingTimeStamp)
     df = df.iloc[start_index:end_index]
-    rezData = copy.deepcopy(startingData)
-    for row in df.itertuples():
+    rezData = startingData
+    for row in tqdm(df.itertuples(), total= end_index - start_index):
         l = string_to_coordinates(row.coordinate)
         is_mod = len(l) > 1
         for coord in l:
@@ -148,9 +148,9 @@ class DynamicList:
         raise PermissionError("This is a view as such you can't modify it")
 
 
-def convert_to_milliseconds(value: TimePassed | None):
+def convert_to_milliseconds(value: TimePassed) -> int:
     if isinstance(value, pd.Timedelta):
-        return value.total_seconds() * 1000
+        return value.microseconds // 1000
     else:
         return value
 
@@ -162,7 +162,8 @@ def visualise_at_interval(summary_function,
                           rezfilename,
                           startingTimeStamp: TimePassed = 0,
                           EndingTimeStamp: TimePassed = -1,
-                          duration: TimePassed = -1):
+                          duration: TimePassed = -1,
+                          rez = None):
     # make sure data exists
     global data
     if not data:
@@ -191,14 +192,21 @@ def visualise_at_interval(summary_function,
 
     idx = binary_search(DynamicList(files_and_timestamp,
                         lambda x: x[1]), startingTimeStamp)
-    currentTimeStamp = startingTimeStamp
-    nextTimeStamp = currentTimeStamp + (duration if duration > 0 else interval)
+    if interval > 0:
+        currentTimeStamp = startingTimeStamp
+        nextTimeStamp = currentTimeStamp + (duration if duration > 0 else interval)
+    else :
+        currentTimeStamp = startingTimeStamp
+        nextTimeStamp = EndingTimeStamp
 
     _, nextFileTimeStamp = files_and_timestamp[idx]
     df = data[idx]
 
     currentState = copy.deepcopy(startingState)
-    rez = [startingState]
+
+    if not rez :
+        rez = []
+    rez.append(startingState)
     start_idx = idx
 
     while currentTimeStamp < EndingTimeStamp:
@@ -233,7 +241,8 @@ def visualise_at_interval(summary_function,
                 )
             else:
                 dh.update(f"just made summary until {pd.Timedelta(milliseconds=nextTimeStamp)}")
-
+            if interval < 0 :
+                break
             # go to the next interval
             currentTimeStamp += interval
             nextTimeStamp += interval
@@ -248,19 +257,32 @@ def visualise_at_interval(summary_function,
             df = data[idx]
 
     dh.update("start making visualizations")
+    transform_data_to_image(transforms, rezfilename, rez, interval < 0)
+
+
+
+def transform_data_to_image(transforms, rezfilename, rez, total : bool = False):
+    if total :
+        file_extension = ".png"
+    else :
+        file_extension = ".gif"
+    
     try:
         for name, transform in transforms.items():
             # make visualisation
             transformed_rez = transform(rez)
+            if total :
+                transformed_rez = transformed_rez[-1]
             # save it in a gif
-            mimsave(f"visualisation/{rezfilename(name)}.gif",
+            mimsave(f"visualisation/{rezfilename(name) + file_extension}" ,
                     transformed_rez, duration=3, loop=0)
-            print(f"results saved on {rezfilename(name)}.gif")
-    except Exception as e:
-        print(type(e))
+            print(f"results saved on {rezfilename(name) + file_extension}")
+    except Exception as e: 
         # make visualisation
         transformed_rez = transforms(rez)
+        if total :
+            transformed_rez = transformed_rez[-1:]
         # save it in a gif
-        mimsave(f"visualisation/{rezfilename}.gif",
+        mimsave(f"visualisation/{rezfilename + file_extension}",
                 transformed_rez, duration=3, loop=0)
-        print(f"results saved on {rezfilename}.gif")
+        print(f"results saved on {rezfilename + file_extension}")

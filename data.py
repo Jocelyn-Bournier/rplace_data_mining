@@ -21,18 +21,21 @@ intra_logger_separator = "\n\n"
 
 class printer(str):
     def __repr__(self):
-        return cleandoc(self)
+        return self
 
 def update_output():
     clear_output(True)
     print(intra_logger_separator.join(cached_log.values()))
 
+def get_str_from_obj(obj):
+    return cleandoc(str(obj))
+
 def display(obj, display_id, internal_separator = "\n"):
     global cached_log
     if display_id in cached_log:
-        cached_log[display_id] += internal_separator + str(obj)
+        cached_log[display_id] += internal_separator + get_str_from_obj(obj)
     else : 
-        cached_log[display_id] = str(obj)
+        cached_log[display_id] = get_str_from_obj(obj)
     cached_log = {key:cached_log[key] for key in sorted(cached_log)}
     update_output()
 
@@ -44,7 +47,7 @@ def clear_display(display_id, wait = False):
     if display_id in cached_log :
         del cached_log[display_id] 
         if not wait :
-            update_output(wait)
+            update_output()
         
 
 
@@ -135,6 +138,7 @@ class DataIteratorDownload():
         self.cache = {}
         self.datasetStartTimeStampFile = datasetStartTimeStampFile
         self.dh = Logger(display_id=0)
+
 
         try:
             with open(self.datasetStartTimeStampFile, "r") as f:
