@@ -206,7 +206,6 @@ def visualise_at_interval(summary_function,
     currentState = copy.deepcopy(startingState)
 
     if rez is None:
-        raise KeyError("")
         rez = []
     rez.append(startingState)
     start_idx = idx

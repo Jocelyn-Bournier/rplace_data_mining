@@ -8,6 +8,7 @@ import array
 
 import numbers
 import warnings
+from tqdm import tqdm
 
 import networkx as nx
 import numpy as np
@@ -363,6 +364,7 @@ def generate_dendrogram(graph,
 
     while True:
         __one_level(current_graph, status, weight, resolution, random_state, inverted = inverted)
+        print("one level done")
         new_mod = __modularity(status, resolution, inverted = inverted)
         if new_mod - mod < __MIN:
             break
@@ -484,7 +486,7 @@ def __one_level(graph, status, weight_key, resolution, random_state, inverted = 
         modified = False
         nb_pass_done += 1
 
-        for node in __randomize(graph.nodes(), random_state):
+        for node in tqdm(__randomize(graph.nodes(), random_state), desc= f"one level {nb_pass_done}/{__PASS_MAX}"):
             com_node = status.node2com[node]
             degc_totw = status.gdegrees.get(node, 0.) / (status.total_weight * 2.)  # NOQA
             neigh_communities = __neighcom(node, graph, status, weight_key)
