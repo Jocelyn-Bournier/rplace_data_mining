@@ -58,6 +58,7 @@ class Logger:
             display_id = max(cached_log.keys())
         self.display_id = display_id
         self.internal_separator = internal_separator
+        self.clear()
     
     def display(self, obj):
         display(obj, self.display_id, self.internal_separator)
@@ -261,8 +262,6 @@ class DataIteratorDownload():
             os.remove(self.datasetStartTimeStampFile)
 
         print(f"All files of cleaned data have been deleted.")
-
-        pass
 
     def init_startStamps(self, reverse=False):
         stamps = {}

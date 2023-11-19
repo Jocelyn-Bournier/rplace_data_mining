@@ -110,6 +110,7 @@ def visualise(image, transform):
 def summary(startingTimeStamp, EndingTimeStamp, startingData, df, summary_function):
     start_index = binary_search(df.timestamp, startingTimeStamp)
     end_index = binary_search(df.timestamp, EndingTimeStamp)
+    df["is_mod"] = False
     df = df.iloc[start_index:end_index]
     rezData = startingData
     for row in tqdm(df.itertuples(), total= end_index - start_index):
@@ -119,7 +120,7 @@ def summary(startingTimeStamp, EndingTimeStamp, startingData, df, summary_functi
             x, y = coord
             try:
                 rezData[x][y] = summary_function(
-                    rezData[x][y], row.pixel_color, row.user, is_mod)
+                    rezData[x][y], row, is_mod)
             except Exception as e:
                 print(x, y)
                 print(row.coordinate)
@@ -150,7 +151,7 @@ class DynamicList:
 
 def convert_to_milliseconds(value: TimePassed) -> int:
     if isinstance(value, pd.Timedelta):
-        return value.microseconds // 1000
+        return int(value / pd.Timedelta(milliseconds=1))
     else:
         return value
 
