@@ -205,7 +205,8 @@ def visualise_at_interval(summary_function,
 
     currentState = copy.deepcopy(startingState)
 
-    if not rez :
+    if rez is None:
+        raise KeyError("")
         rez = []
     rez.append(startingState)
     start_idx = idx
@@ -237,7 +238,8 @@ def visualise_at_interval(summary_function,
                 dh.update(
                     f"""
                         just made summary from {pd.Timedelta(milliseconds=currentTimeStamp)} to {pd.Timedelta(milliseconds=nextTimeStamp)}
-                        epochs : i
+                        epochs : {i}
+                        {len(rez)}
                     """
                 )
             else:
