@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
-from imageio import mimsave
+from imageio import mimsave, imwrite
 from tqdm import tqdm
 from data import DataIteratorDownload, Logger
 data = None
@@ -91,9 +91,9 @@ def binary_search(arr, target):
     return left
 
 
-def convertImage(image, transform):
+def convertImage(image, transform, dtype=np.uint8):
     # convert the image to RGB
-    rezImage = np.zeros((len(image), len(image[0]), 3), dtype=np.uint8)
+    rezImage = np.zeros((len(image), len(image[0]), 3), dtype=dtype)
     for i in range(len(image)):
         for j in range(len(image[i])):
             rezImage[i][j] = transform(image[i][j])
@@ -170,6 +170,7 @@ def visualise_at_interval(summary_function,
     if not data:
         data = initialize_data_loader()
 
+    data.dh.clear()
     i = 0
 
     # Create a display on which most thing from this function will be printed
@@ -215,6 +216,8 @@ def visualise_at_interval(summary_function,
         currentState = summary(
             currentTimeStamp, nextTimeStamp, currentState, df, summary_function)
         if nextTimeStamp > nextFileTimeStamp and idx + 1 < len(files_and_timestamp):
+            if duration < 0 :
+                del data.cache[idx]
             idx += 1
             _, nextFileTimeStamp = files_and_timestamp[idx]
             df = data[idx]
@@ -228,11 +231,10 @@ def visualise_at_interval(summary_function,
                 except Exception as e:
                     # Catch any exception without specifying a specific type.
                     print(f"An error occurred: {e}")
-            # save the current state
-            rez.append(currentState)
 
             i += 1
             if duration > 0:
+                rez.append(currentState)
                 currentState = copy.deepcopy(startingState)
                 dh.update(
                     f"""
@@ -242,6 +244,8 @@ def visualise_at_interval(summary_function,
                     """
                 )
             else:
+            # save the current state
+                rez.append(copy.deepcopy(currentState))
                 dh.update(f"just made summary until {pd.Timedelta(milliseconds=nextTimeStamp)}")
             if interval < 0 :
                 break
@@ -249,42 +253,49 @@ def visualise_at_interval(summary_function,
             currentTimeStamp += interval
             nextTimeStamp += interval
 
-            _, nextFileTimeStamp = files_and_timestamp[start_idx]
-            while nextFileTimeStamp < currentTimeStamp and idx + 1 < len(data):
-                del data[start_idx]
-                start_idx += 1
+
+            if duration > 0:
                 _, nextFileTimeStamp = files_and_timestamp[start_idx]
+                while nextFileTimeStamp < currentTimeStamp and idx + 1 < len(data):
+                    del data.cache[start_idx]
+                    start_idx += 1
+                    _, nextFileTimeStamp = files_and_timestamp[start_idx]
 
-            idx = start_idx
-            df = data[idx]
-
+                idx = start_idx
+                df = data[idx]
+    
+    # clean files remaining
+    for x in list(data.cache):
+        del data.cache[x]
     dh.update("start making visualizations")
     transform_data_to_image(transforms, rezfilename, rez, interval < 0)
 
 
 
 def transform_data_to_image(transforms, rezfilename, rez, total : bool = False):
-    if total :
-        file_extension = ".png"
-    else :
-        file_extension = ".gif"
+
     
     try:
         for name, transform in transforms.items():
-            # make visualisation
-            transformed_rez = transform(rez)
-            if total :
-                transformed_rez = transformed_rez[-1]
-            # save it in a gif
-            mimsave(f"visualisation/{rezfilename(name) + file_extension}" ,
-                    transformed_rez, duration=3, loop=0)
-            print(f"results saved on {rezfilename(name) + file_extension}")
-    except Exception as e: 
-        # make visualisation
-        transformed_rez = transforms(rez)
-        if total :
-            transformed_rez = transformed_rez[-1:]
+            one_transform_data_to_image(transform, rezfilename(name), rez, total)
+    except AttributeError: 
+        one_transform_data_to_image(transforms, rezfilename, rez, total)
+        
+
+def one_transform_data_to_image(transform, rezfilename, rez, total : bool = False) :
+
+    # make visualisation
+
+    if total :
+        transformed_rez = transform(rez[-1])
+
+        #ssave it as png
+        imwrite(f"visualisation/{rezfilename}.png" ,transformed_rez)
+        print(f"results saved on {rezfilename}.png")
+
+    else :
+        transformed_rez = transform(rez)
+
         # save it in a gif
-        mimsave(f"visualisation/{rezfilename + file_extension}",
-                transformed_rez, duration=3, loop=0)
-        print(f"results saved on {rezfilename + file_extension}")
+        mimsave(f"visualisation/{rezfilename}.gif" ,transformed_rez, duration=3, loop=0)
+        print(f"results saved on {rezfilename}.gif")
